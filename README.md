@@ -1,80 +1,178 @@
-# Spring Boot E-Commerce Backend
+# E-Commerce Backend API - Spring Boot Assignment
 
-A minimal E-Commerce Backend API built with **Spring Boot** and **MongoDB**.
-This project allows users to list products, add items to a cart, place orders, and simulate payments using a mock payment service.
+This is a complete e-commerce backend API built with Spring Boot and MongoDB. It features a fully functional mock payment integration and uses an embedded database for zero-configuration execution.
 
-## 🚀 Key Features
+## Features
+✅ **Product Management**: Create and list products.
+✅ **Shopping Cart**: Add items, view cart, and clear cart.
+✅ **Order Management**: Create orders from cart, view order details.
+✅ **Payment Integration**: Mock Service with automatic Webhook simulation (simulating Razorpay).
+✅ **Embedded Database**: Runs entirely in-memory using `de.flapdoodle.embed.mongo`, requiring no local MongoDB installation.
+✅ **Universal Compatibility**: Pre-configured for Mac (ARM64/Apple Silicon), Windows, and Linux.
 
--   **Product Management**: Create and list products.
--   **Cart System**: Add items, view cart, and clear cart.
--   **Order Processing**: Convert cart items to orders.
--   **Mock Payment Integration**: Simulate payments without external credentials (includes Webhook support).
--   **Embedded Database**: Uses an in-memory MongoDB that works out-of-the-box on all platforms (including Mac ARM64/M1/M2).
+## Tech Stack
+-   **Backend**: Spring Boot 3.2.2
+-   **Database**: Embedded MongoDB (In-Memory)
+-   **Payment Gateway**: Mock Service (Simulates Razorpay)
+-   **Language**: Java 17
+-   **Build Tool**: Maven
 
-## 🛠️ Technology Stack
+## Prerequisites
+-   Java 17 or higher
+-   Maven (Optional, wrapper provided)
+-   **No local MongoDB installation needed** (The app manages its own database instance).
 
--   **Java 17**
--   **Spring Boot 3.2.2**
--   **Spring Data MongoDB**
--   **Embedded MongoDB** (for zero-setup local development)
--   **Maven**
+## Setup Instructions
 
-## ⚙️ Setup & Running
-
-**Prerequisites**:
--   Java 17 or later installed.
--   Maven (optional, wrapper included).
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/raghav095/raghav095-Springboot_assignment-Payemnt.git
-cd springboot-payment-assignment
-```
-
-### 2. Run the Application
-You do **not** need to install MongoDB. The application will start an embedded instance automatically.
-```bash
-./mvnw spring-boot:run
-```
-*The app runs on `http://localhost:8080`.*
-
-### 3. Verify Functionality
-A Python script is included to test the full create-order-pay flow.
-```bash
-python3 test_flow.py
-```
-
-## 🔌 API Endpoints
-
-### Products
--   `POST /api/products` - Create a product
-    ```json
-    { "name": "Laptop", "price": 50000.0, "stock": 10 }
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/raghav095/raghav095-Springboot_assignment-Payemnt.git
+    cd springboot-payment-assignment
     ```
--   `GET /api/products` - List all products
 
-### Cart
--   `POST /api/cart/add` - Add item to cart
--   `GET /api/cart/{userId}` - View user's cart
--   `DELETE /api/cart/{userId}/clear` - Clear cart
+2.  **Install dependencies**
+    ```bash
+    ./mvnw clean install
+    ```
 
-### Orders
--   `POST /api/orders` - Create order from cart
--   `GET /api/orders/{orderId}` - Get order details
+3.  **Run the application**
+    ```bash
+    ./mvnw spring-boot:run
+    ```
+    The application will start on `http://localhost:8080`.
 
-### Payments (Mock)
--   `POST /api/payments/create` - Initiate payment
--   `POST /api/webhooks/payment` - Webhook callback (called automatically in Mock mode)
+## API Endpoints & Curl Commands
 
-## 📝 Configuration
+### 1. Product APIs
 
-The application is configured in `src/main/resources/application.properties`.
--   **`payment.mode=mock`**: Enables the internal mock payment service.
--   **`de.flapdoodle.mongodb.embedded.version=6.0.8`**: Ensures compatibility with Mac Apple Silicon (ARM64).
-
-## 🧪 Testing
-
-To run the unit tests:
+**Create Product**
 ```bash
-./mvnw test
+curl -X POST http://localhost:8080/api/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Gaming Laptop",
+    "description": "High-performance gaming laptop",
+    "price": 50000.0,
+    "stock": 10
+  }'
 ```
+
+**Get All Products**
+```bash
+curl -X GET http://localhost:8080/api/products
+```
+
+### 2. Cart APIs
+
+**Add Item to Cart**
+```bash
+curl -X POST http://localhost:8080/api/cart/add \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "user123",
+    "productId": "REPLACE_WITH_PRODUCT_ID",
+    "quantity": 1
+  }'
+```
+
+**Get User's Cart**
+```bash
+curl -X GET "http://localhost:8080/api/cart/user123"
+```
+
+**Clear User's Cart**
+```bash
+curl -X DELETE "http://localhost:8080/api/cart/user123/clear"
+```
+
+### 3. Order APIs
+
+**Create Order from Cart**
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "user123"
+  }'
+```
+
+**Get Order Details**
+```bash
+curl -X GET "http://localhost:8080/api/orders/REPLACE_WITH_ORDER_ID"
+```
+
+### 4. Payment APIs
+
+**Create Payment (Mock)**
+```bash
+curl -X POST http://localhost:8080/api/payments/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orderId": "REPLACE_WITH_ORDER_ID",
+    "amount": 50000.0
+  }'
+```
+*Note: This will return a status of `PENDING`.*
+
+**Webhook (Automatic)**
+Since the application is in `mock` mode, the system **automatically** triggers the webhook logic 3 seconds after payment creation. You do not need to manually call the webhook endpoint unless you are debugging.
+
+**Manual Webhook Call (Optional Debugging)**
+```bash
+curl -X POST http://localhost:8080/api/webhooks/payment \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "payment.captured",
+    "payload": {
+      "payment": {
+        "id": "pay_mock_123",
+        "order_id": "REPLACE_WITH_ORDER_ID_FROM_PAYMENT",
+        "status": "captured"
+      }
+    }
+  }'
+```
+
+## Complete Testing Flow
+We have provided a Python script that automates the entire end-to-end testing flow.
+
+**Run the verification script:**
+```bash
+python3 verify_all_endpoints.py
+```
+
+**Steps performed by the script:**
+1.  Creates a new Product.
+2.  Adds the product to the user's Cart.
+3.  Creates an Order from the Cart.
+4.  Initiates a Payment.
+5.  Waits for the Mock Webhook to process.
+6.  Verifies the Order status is updated to `PAID`.
+
+## Database Schema
+The application uses the following MongoDB collections (created automatically):
+-   `users`: User information
+-   `products`: Product catalog
+-   `cart_items`: Shopping cart contents
+-   `orders`: Order records
+-   `order_items`: Line items within orders
+-   `payments`: Payment transaction logs
+
+## Razorpay / Mock Integration
+The application supports two modes, configured in `application.properties`:
+
+1.  **Mock Mode (Default)**: `payment.mode=mock`
+    -   Simulates payment success without external API calls.
+    -   Automatically triggers webhooks internally.
+    -   Ideal for development and testing.
+
+2.  **Razorpay Mode**: `payment.mode=razorpay`
+    -   Requires valid `razorpay.key-id` and `razorpay.key-secret`.
+    -   Interacts with real Razorpay APIs.
+
+## Troubleshooting
+
+-   **"Connection refused"**: Make sure the application is running (`./mvnw spring-boot:run`) before running curl commands or the test script.
+-   **Port Conflicts**: If port 8080 is occupied, you can change it in specific commands:
+    `./mvnw spring-boot:run -Dspring-boot.run.arguments=--server.port=8081`
+-   **Architecture Issues**: If the embedded database fails on Mac (M1/M2), ensure `de.flapdoodle.mongodb.embedded.version=6.0.8` is set in `application.properties` (this is already configured).
