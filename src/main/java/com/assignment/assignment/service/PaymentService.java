@@ -25,6 +25,9 @@ public class PaymentService {
     @Value("${razorpay.key-secret}")
     private String razorpayKeySecret;
 
+    @Value("${payment.mode:razorpay}")
+    private String paymentMode;
+
     public Payment initiatePayment(String orderId, Double amount) throws Exception {
         // Validate order exists and is in CREATED status
         Order order = orderRepository.findById(orderId).orElse(null);
@@ -36,16 +39,51 @@ public class PaymentService {
         }
 
         try {
-            // Create Razorpay order
-            RazorpayClient razorpay = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
-            JSONObject orderRequest = new JSONObject();
-            orderRequest.put("amount", (int) (amount * 100)); // Amount in paisa
-            orderRequest.put("currency", "INR");
+            String paymentId;
+            String status = "PENDING";
 
-            com.razorpay.Order razorpayOrder = razorpay.orders.create(orderRequest);
+            if ("mock".equalsIgnoreCase(paymentMode)) {
+                // Mock Implementation
+                paymentId = "pay_mock_" + System.currentTimeMillis();
+                System.out.println("Processing Mock Payment for Order: " + orderId);
+
+                // Simulate async processing (in a real app, this might be a separate thread or
+                // service)
+                // For this assignment, we rely on the Mock Service Flow which says:
+                // "Mock service will automatically call webhook after 3 seconds."
+                // Since this is the backend itself acting as the "client" to the gateway,
+                // and we don't have a separate running mock server on 8081 as per diagram
+                // (unless we wrote one),
+                // we will simulate the behavior here or assume the user runs one.
+                // However, to make this standalone and working "out of the box",
+                // we can spawn a thread to call our own webhook after 3 seconds.
+
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(3000);
+                        // Auto-trigger webhook logic internally or via call
+                        updatePaymentStatus(orderId, "SUCCESS");
+                        order.setStatus("PAID");
+                        orderRepository.save(order);
+                        System.out.println("Mock Payment Completed for Order: " + orderId);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+
+            } else {
+                // Razorpay Implementation
+                RazorpayClient razorpay = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
+                JSONObject orderRequest = new JSONObject();
+                orderRequest.put("amount", (int) (amount * 100)); // Amount in paisa
+                orderRequest.put("currency", "INR");
+
+                com.razorpay.Order razorpayOrder = razorpay.orders.create(orderRequest);
+                paymentId = razorpayOrder.get("id");
+            }
 
             // Create payment record
-            Payment payment = new Payment(orderId, amount, "PENDING", razorpayOrder.get("id"));
+            Payment payment = new Payment(orderId, amount, "PENDING", paymentId);
             return paymentRepository.save(payment);
 
         } catch (RazorpayException e) {
