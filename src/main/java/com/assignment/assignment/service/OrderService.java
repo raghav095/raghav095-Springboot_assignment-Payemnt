@@ -122,4 +122,33 @@ public class OrderService {
         }
         return null;
     }
+
+    public Order cancelOrder(String orderId) throws Exception {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            throw new Exception("Order not found");
+        }
+
+        if ("PAID".equals(order.getStatus())) {
+            throw new Exception("Cannot cancel paid order");
+        }
+
+        if ("CANCELLED".equals(order.getStatus())) {
+            throw new Exception("Order is already cancelled");
+        }
+
+        order.setStatus("CANCELLED");
+        order = orderRepository.save(order);
+
+        // Restore stock
+        List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
+        for (OrderItem item : orderItems) {
+            Product product = productService.getProductById(item.getProductId());
+            if (product != null) {
+                productService.updateStock(item.getProductId(), product.getStock() + item.getQuantity());
+            }
+        }
+
+        return order;
+    }
 }

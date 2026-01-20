@@ -36,4 +36,19 @@ public class OrderController {
         }
         return ResponseEntity.ok(order);
     }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<java.util.List<Order>> getUserOrders(@PathVariable String userId) {
+        return ResponseEntity.ok(orderService.getOrdersByUserId(userId));
+    }
+
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable String orderId) {
+        try {
+            Order order = orderService.cancelOrder(orderId);
+            return ResponseEntity.ok(order);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
